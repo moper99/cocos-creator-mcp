@@ -490,7 +490,7 @@ export class CocosMCPServer {
       'code-script-methods':    ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'getScript', args: [d.scriptPath] })],
       'code-script-gen-gs':     ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'getScript', args: [d.scriptPath] })],
       'code-script-gen-eh':     ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'getScript', args: [d.scriptPath] })],
-      'code-script-fix':        ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'getScript', args: [d.scriptPath] })],
+      'code-script-fix':        ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'fixScriptErrors', args: [d.scriptPath, d.errorMessage] })],
 
       // ==================== 游戏工具 (execute-scene-script) ====================
       'game-create-project':    ['scene', 'execute-scene-script', null],

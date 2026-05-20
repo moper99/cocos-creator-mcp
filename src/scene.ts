@@ -113,7 +113,15 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const { director } = require('cc');
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
-            const node = scene.getChildByUuid(nodeUuid);
+            let node = scene.getChildByUuid(nodeUuid);
+            if (!node) {
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                    return null;
+                };
+                node = find(scene);
+            }
             if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
             const comps = [...node.components];
             let removed = 0;
@@ -123,6 +131,61 @@ export const methods: { [key: string]: (...any: any) => any } = {
                 removed++;
             }
             return { success: true, message: `Removed ${removed} components` };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    fixScriptErrors(scriptPath: string, errorMessage?: string) {
+        try {
+            const fs = require('fs');
+            if (!fs.existsSync(scriptPath)) return { success: false, error: `Script not found: ${scriptPath}` };
+            const content = fs.readFileSync(scriptPath, 'utf8');
+            return { success: true, data: { path: scriptPath, content, error: errorMessage || 'No error message provided' } };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    attachScript(nodeUuid: string, scriptName: string) {
+        try {
+            const { director, js } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            let node = scene.getChildByUuid(nodeUuid);
+            if (!node) {
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                    return null;
+                };
+                node = find(scene);
+            }
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            const Cls = js.getClassByName(scriptName) || js.getClassByName(`cc.${scriptName}`);
+            if (!Cls) return { success: false, error: `Script class ${scriptName} not found. Make sure the script is compiled.` };
+            node.addComponent(Cls);
+            return { success: true, message: `Script ${scriptName} attached` };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    detachScript(nodeUuid: string, scriptName: string) {
+        try {
+            const { director, js } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            let node = scene.getChildByUuid(nodeUuid);
+            if (!node) {
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                    return null;
+                };
+                node = find(scene);
+            }
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            const Cls = js.getClassByName(scriptName) || js.getClassByName(`cc.${scriptName}`);
+            if (!Cls) return { success: false, error: `Script class ${scriptName} not found` };
+            const comp = node.getComponent(Cls);
+            if (!comp) return { success: false, error: `Script ${scriptName} not found on node` };
+            node.removeComponent(comp);
+            return { success: true, message: `Script ${scriptName} detached` };
         } catch (e: any) { return { success: false, error: e.message }; }
     },
 
@@ -152,7 +215,20 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
             const node = scene.getChildByUuid(nodeUuid);
-            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            if (!node) {
+                // 尝试递归查找
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) {
+                        const found = find(c);
+                        if (found) return found;
+                    }
+                    return null;
+                };
+                const found = find(scene);
+                if (found) { found.destroy(); return { success: true, message: 'Node deleted' }; }
+                return { success: false, error: `Node ${nodeUuid} not found in scene` };
+            }
             node.destroy();
             return { success: true, message: 'Node deleted' };
         } catch (e: any) { return { success: false, error: e.message }; }
@@ -163,14 +239,31 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const { director, js } = require('cc');
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
-            const node = scene.getChildByUuid(nodeUuid);
+            // 尝试多种方式查找节点
+            let node = scene.getChildByUuid(nodeUuid);
+            if (!node) {
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                    return null;
+                };
+                node = find(scene);
+            }
             if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
-            const Cls = js.getClassByName(componentType);
-            if (!Cls) return { success: false, error: `Component type ${componentType} not found` };
-            const comp = node.getComponent(Cls);
-            if (!comp) return { success: false, error: `Component ${componentType} not found on node` };
-            node.removeComponent(comp);
-            return { success: true, message: `Component ${componentType} removed` };
+            // 尝试多种方式查找组件
+            const Cls = js.getClassByName(componentType) || js.getClassByName(`cc.${componentType}`);
+            if (Cls) {
+                const comp = node.getComponent(Cls);
+                if (comp) { node.removeComponent(comp); return { success: true, message: `Component ${componentType} removed` }; }
+            }
+            // 按名称遍历查找
+            for (const comp of node.components) {
+                if (comp.constructor.name === componentType || comp.constructor.name === `cc.${componentType}`) {
+                    node.removeComponent(comp);
+                    return { success: true, message: `Component ${componentType} removed` };
+                }
+            }
+            return { success: false, error: `Component ${componentType} not found on node` };
         } catch (e: any) { return { success: false, error: e.message }; }
     },
 
@@ -195,7 +288,12 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const { director } = require('cc');
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
-            const node = scene.getChildByUuid(nodeUuid);
+            const find = (n: any): any => {
+                if (n.uuid === nodeUuid) return n;
+                for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                return null;
+            };
+            const node = find(scene);
             if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
             return { success: true, message: 'Prefab apply requested (requires editor integration)' };
         } catch (e: any) { return { success: false, error: e.message }; }
@@ -206,7 +304,12 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const { director } = require('cc');
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
-            const node = scene.getChildByUuid(nodeUuid);
+            const find = (n: any): any => {
+                if (n.uuid === nodeUuid) return n;
+                for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                return null;
+            };
+            const node = find(scene);
             if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
             return { success: true, message: 'Prefab revert requested (requires editor integration)' };
         } catch (e: any) { return { success: false, error: e.message }; }
@@ -217,11 +320,27 @@ export const methods: { [key: string]: (...any: any) => any } = {
             const { director, js } = require('cc');
             const scene = director.getScene();
             if (!scene) return { success: false, error: 'No active scene' };
-            const node = scene.getChildByUuid(nodeUuid);
+            // 递归查找节点
+            let node = scene.getChildByUuid(nodeUuid);
+            if (!node) {
+                const find = (n: any): any => {
+                    if (n.uuid === nodeUuid) return n;
+                    for (const c of n.children || []) { const f = find(c); if (f) return f; }
+                    return null;
+                };
+                node = find(scene);
+            }
             if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
-            const Cls = js.getClassByName(componentType);
-            if (!Cls) return { success: false, error: `Component type ${componentType} not found` };
-            const comp = node.getComponent(Cls);
+            // 尝试多种方式查找组件
+            const Cls = js.getClassByName(componentType) || js.getClassByName(`cc.${componentType}`);
+            let comp = Cls ? node.getComponent(Cls) : null;
+            if (!comp) {
+                for (const c of node.components) {
+                    if (c.constructor.name === componentType || c.constructor.name === `cc.${componentType}`) {
+                        comp = c; break;
+                    }
+                }
+            }
             if (!comp) return { success: false, error: `Component ${componentType} not found on node` };
             (comp as any)[property] = value;
             return { success: true, message: `Component property '${property}' updated` };
