@@ -146,6 +146,34 @@ export const methods: { [key: string]: (...any: any) => any } = {
         } catch (e: any) { return { success: false, error: e.message }; }
     },
 
+    deleteNode(nodeUuid: string) {
+        try {
+            const { director } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            const node = scene.getChildByUuid(nodeUuid);
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            node.destroy();
+            return { success: true, message: 'Node deleted' };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    removeComponent(nodeUuid: string, componentType: string) {
+        try {
+            const { director, js } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            const node = scene.getChildByUuid(nodeUuid);
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            const Cls = js.getClassByName(componentType);
+            if (!Cls) return { success: false, error: `Component type ${componentType} not found` };
+            const comp = node.getComponent(Cls);
+            if (!comp) return { success: false, error: `Component ${componentType} not found on node` };
+            node.removeComponent(comp);
+            return { success: true, message: `Component ${componentType} removed` };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
     getComponents(nodeUuid: string) {
         try {
             const { director } = require('cc');
@@ -159,6 +187,28 @@ export const methods: { [key: string]: (...any: any) => any } = {
                     type: comp.constructor.name, enabled: comp.enabled, uuid: comp.uuid
                 }))
             };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    prefabApply(nodeUuid: string) {
+        try {
+            const { director } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            const node = scene.getChildByUuid(nodeUuid);
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            return { success: true, message: 'Prefab apply requested (requires editor integration)' };
+        } catch (e: any) { return { success: false, error: e.message }; }
+    },
+
+    prefabRevert(nodeUuid: string) {
+        try {
+            const { director } = require('cc');
+            const scene = director.getScene();
+            if (!scene) return { success: false, error: 'No active scene' };
+            const node = scene.getChildByUuid(nodeUuid);
+            if (!node) return { success: false, error: `Node ${nodeUuid} not found` };
+            return { success: true, message: 'Prefab revert requested (requires editor integration)' };
         } catch (e: any) { return { success: false, error: e.message }; }
     },
 
