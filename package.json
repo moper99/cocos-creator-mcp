@@ -1,0 +1,109 @@
+{
+  "name": "cocos-mcp-server",
+  "package_version": 2,
+  "version": "1.1.0",
+  "description": "Cocos Creator AI MCP Server - 让 AI 辅助开发 Cocos Creator 项目",
+  "author": "opencode",
+  "license": "MIT",
+  "editor": ">=3.8.0",
+  "keywords": [
+    "cocos",
+    "mcp",
+    "ai",
+    "editor",
+    "extension"
+  ],
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "watch": "node scripts/build.js --watch"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.0.0"
+  },
+  "panels": {
+    "default": {
+      "title": "Cocos MCP Server",
+      "type": "dockable",
+      "main": "./dist/main.js",
+      "size": {
+        "min-width": 400,
+        "min-height": 300,
+        "width": 600,
+        "height": 500
+      }
+    }
+  },
+  "contributions": {
+    "menus": [
+      {
+        "path": "i18n:menu.extension/Cocos MCP Server",
+        "label": "Open MCP Server",
+        "message": "open-panel"
+      }
+    ],
+    "messages": {
+      "open-panel": {
+        "methods": ["openPanel"]
+      },
+      "start-server": {
+        "methods": ["startServer"]
+      },
+      "stop-server": {
+        "methods": ["stopServer"]
+      }
+    },
+    "scene": {
+      "script": "./dist/scene.js",
+      "methods": [
+        "getCurrentSceneInfo",
+        "getSceneHierarchy",
+        "getAllNodes",
+        "findNodeByName",
+        "setNodeProperty",
+        "addComponentToNode",
+        "removeComponentFromNode",
+        "removeAllComponents",
+        "getNodeInfo",
+        "getComponents",
+        "setComponentProperty",
+        "createPrefabFromNode",
+        "executeScript",
+        "createScript",
+        "getScript",
+        "listScripts",
+        "getConsoleLogs",
+        "clearConsole",
+        "getEditorInfo",
+        "getProjectLogs",
+        "validateScene",
+          "getProjectInfo",
+          "getProjectSettings",
+          "getCocosVersion",
+          "getBuildPlatforms",
+          "getBuildSettings",
+          "setBuildSettings",
+          "getBuildProgress",
+          "cancelBuild",
+          "runProject",
+          "stopProject",
+          "restartProject",
+          "getRunStatus",
+          "getLatestBuild",
+          "startProfiling",
+          "stopProfiling",
+          "checkProject",
+          "setupGameConfig",
+          "exportGameConfig",
+          "batchRenameNodes",
+          "autoAlignNodes"
+      ]
+    }
+  }
+}
