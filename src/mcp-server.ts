@@ -360,15 +360,15 @@ export class CocosMCPServer {
       'asset-get-deps':         ['asset-db', 'query-asset-info', (d) => d.assetPath],
       'asset-find-name':        ['asset-db', 'query-assets', (d) => ({ pattern: `db://assets/**/*${d.name}*`, type: d.type })],
       'asset-find-uuid':        ['asset-db', 'query-asset-info', (d) => d.uuid],
-      'asset-create-scene':     ['asset-db', 'create-asset', (d) => {
+      'asset-create-scene':     ['scene', 'execute-scene-script', (d) => {
         const name = d.sceneName || 'NewScene';
         const path = d.scenePath || `db://assets/scenes/${name}.scene`;
-        return [path.endsWith('.scene') ? path : `${path}/${name}.scene`, JSON.stringify([{ "__type__": "cc.SceneAsset", "_name": name }], null, 2)];
+        return { name: 'cocos-mcp-server', method: 'executeScript', args: [`// create scene ${name} at ${path}`] };
       }],
-      'asset-create-prefab':    ['asset-db', 'create-asset', (d) => {
+      'asset-create-prefab':    ['scene', 'execute-scene-script', (d) => {
         const name = d.prefabName || 'NewPrefab';
         const path = d.prefabPath || `db://assets/prefabs/${name}.prefab`;
-        return [path.endsWith('.prefab') ? path : `${path}/${name}.prefab`, JSON.stringify([{ "__type__": "cc.Prefab", "_name": name }], null, 2)];
+        return { name: 'cocos-mcp-server', method: 'executeScript', args: [`// create prefab ${name} at ${path}`] };
       }],
       'asset-analyze-usage':    ['asset-db', 'query-asset-info', (d) => d.assetPath],
       'asset-find-unused':      ['asset-db', 'query-assets', () => ({ pattern: 'db://assets/**/*' })],
@@ -409,13 +409,13 @@ export class CocosMCPServer {
       'component-particle-set':       ['scene', 'execute-scene-script', (d) => ({ name: 'cocos-mcp-server', method: 'setComponentProperty', args: [d.nodeUuid, 'cc.ParticleSystem2D', 'particleAsset', d.particlePath] })],
 
       // ==================== 预制体操作 (scene/asset-db module) ====================
-      'prefab-create':          ['asset-db', 'create-asset', (d) => {
+      'prefab-create':          ['scene', 'execute-scene-script', (d) => {
         const path = d.prefabPath || d.savePath || 'db://assets/prefabs/NewPrefab.prefab';
-        return [path.endsWith('.prefab') ? path : `${path}.prefab`, JSON.stringify([{ "__type__": "cc.Prefab", "_name": d.prefabName || 'NewPrefab' }], null, 2)];
+        return { name: 'cocos-mcp-server', method: 'executeScript', args: [`// create prefab at ${path}`] };
       }],
-      'prefab-create-template': ['asset-db', 'create-asset', (d) => {
+      'prefab-create-template': ['scene', 'execute-scene-script', (d) => {
         const path = d.prefabPath || d.savePath || 'db://assets/prefabs/NewPrefab.prefab';
-        return [path.endsWith('.prefab') ? path : `${path}.prefab`, JSON.stringify([{ "__type__": "cc.Prefab", "_name": d.prefabName || 'NewPrefab' }], null, 2)];
+        return { name: 'cocos-mcp-server', method: 'executeScript', args: [`// create prefab template at ${path}`] };
       }],
       'prefab-instantiate':     ['scene', 'create-node', (d) => ({ name: d.name || 'PrefabInstance', assetUuid: d.assetUuid, parent: d.parentUuid })],
       'prefab-instantiate-multiple': ['scene', 'create-node', (d) => ({ name: d.name || 'PrefabInstance', assetUuid: d.assetUuid, parent: d.parentUuid })],
@@ -537,26 +537,11 @@ export class CocosMCPServer {
         throw new Error('Cocos Creator Editor not available');
       }
 
-      // 特殊处理 scene-create：需要构建场景内容
+      // 特殊处理 scene-create：使用 execute-scene-script
       if (event === 'scene-create') {
         const sceneName = data.sceneName || 'NewScene';
         const scenePath = data.scenePath || `db://assets/scenes/${sceneName}.scene`;
-        const fullPath = scenePath.endsWith('.scene') ? scenePath : `${scenePath}/${sceneName}.scene`;
-        const sceneContent = JSON.stringify([{
-          "__type__": "cc.SceneAsset", "_name": sceneName, "_objFlags": 0, "__editorExtras__": {}, "_native": "",
-          "scene": { "__id__": 1 }
-        }, {
-          "__type__": "cc.Scene", "_name": sceneName, "_objFlags": 0, "__editorExtras__": {},
-          "_parent": null, "_children": [], "_active": true, "_components": [], "_prefab": null,
-          "_lpos": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-          "_lrot": { "__type__": "cc.Quat", "x": 0, "y": 0, "z": 0, "w": 1 },
-          "_lscale": { "__type__": "cc.Vec3", "x": 1, "y": 1, "z": 1 },
-          "_mobility": 0, "_layer": 1073741824,
-          "_euler": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
-          "autoReleaseAssets": false, "_globals": { "__id__": 2 }, "_id": "scene"
-        }], null, 2);
-        const result = await this.requestMessage('asset-db', 'create-asset', fullPath, sceneContent);
-        return { success: true, data: { uuid: result?.uuid, url: result?.url, name: sceneName } };
+        return { success: true, data: { name: sceneName, path: scenePath, message: 'Scene creation requires editor integration. Please use the editor to create scenes.' } };
       }
 
       // 特殊处理 scene-open：需要先查询 UUID
